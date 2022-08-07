@@ -14,6 +14,8 @@ import { requireUser } from "~/session.server";
 import { currencyFormatter, parseDate } from "~/utils";
 import { createDeposit } from "~/models/deposit.server";
 import invariant from "tiny-invariant";
+import { useRef } from "react";
+import { useEffect } from "react";
 
 export async function loader({ request, params }: LoaderArgs) {
   await requireUser(request);
@@ -153,21 +155,42 @@ function Deposits() {
   const data = useLoaderData<typeof loader>();
   const newDepositFetcher = useFetcher();
   // 🐨 create a ref for the form (so we can reset it once the submission is finished)
+  const formRef = useRef<HTMLFormElement>(null);
 
   // 🐨 create a deposits array that includes the user's submission
   // 💰 you can get the user's submission via newDepositFetcher.submission
   // 💰 you can convert the depositDate to a Date object via parseDate and then use toLocaleDateString()
+  const deposits = [...data.deposits];
+
+  if (newDepositFetcher.submission) {
+    const amount = Number(newDepositFetcher.submission.formData.get("amount"));
+    if (typeof amount === "number") {
+      deposits.push({
+        id: "new",
+        amount,
+        depositDateFormatted: parseDate(
+          newDepositFetcher.submission.formData.get("depositDate"),
+        ).toLocaleDateString(),
+      });
+    }
+  }
 
   // 🐨 add a useEffect that resets the form when the submission is finished
   // 💰 (newDepositFetcher.state === "idle")
+  useEffect(() => {
+    if (!formRef.current) return;
+    if (newDepositFetcher.state !== "idle") return;
+
+    formRef.current.reset();
+  }, [newDepositFetcher.state]);
 
   return (
     <div>
       <div className="font-bold leading-8">Deposits</div>
       {/* 🐨 swap this for your optimistic deposits array */}
-      {data.deposits.length > 0 ? (
+      {deposits.length > 0 ? (
         // 🐨 swap this for your optimistic deposits array
-        data.deposits.map((deposit) => (
+        deposits.map((deposit) => (
           <div key={deposit.id} className={lineItemClassName}>
             <Link
               to={`../../deposits/${deposit.id}`}
@@ -185,6 +208,7 @@ function Deposits() {
         method="post"
         className="grid grid-cols-1 gap-x-4 gap-y-2 lg:grid-cols-2"
         // 🐨 add your form ref here
+        ref={formRef}
       >
         <div className="min-w-[100px]">
           <div className="flex flex-wrap items-center gap-1">
@@ -281,8 +305,8 @@ export function ErrorBoundary({ error }: { error: Error }) {
   console.error(error);
 
   return (
-    <div className="absolute inset-0 flex justify-center bg-red-100 pt-4">
-      <div className="text-red-brand text-center">
+    <div className="absolute inset-0 flex justify-center pt-4 bg-red-100">
+      <div className="text-center text-red-brand">
         <div className="text-[14px] font-bold">Oh snap!</div>
         <div className="px-2 text-[12px]">There was a problem. Sorry.</div>
       </div>

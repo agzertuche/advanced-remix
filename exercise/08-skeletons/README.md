@@ -40,4 +40,4 @@ to and display the skeleton component while we load the rest of the data.
 After the instruction, if you want to remember what you've just learned, then
 fill out the elaboration and feedback form:
 
-https://ws.kcd.im/?ws=Advanced%20Remix%20%F0%9F%A6%B8&e=08.%20Skeletons&em=
+<https://ws.kcd.im/?ws=Advanced%20Remix%20%F0%9F%A6%B8&e=08.%20Skeletons&em>=

@@ -1,9 +1,15 @@
-import { NavLink, Outlet, useLoaderData } from "@remix-run/react";
+import {
+  NavLink,
+  Outlet,
+  useLoaderData,
+  useTransition,
+} from "@remix-run/react";
 import type { LoaderArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { FilePlusIcon } from "~/components";
 import { requireUser } from "~/session.server";
 import { getCustomerListItems } from "~/models/customer.server";
+import { useSpinDelay } from "spin-delay";
 
 export async function loader({ request }: LoaderArgs) {
   await requireUser(request);
@@ -14,15 +20,22 @@ export async function loader({ request }: LoaderArgs) {
 
 export default function Customers() {
   const { customers } = useLoaderData<typeof loader>();
+  const transition = useTransition();
 
   // 🐨 get the transition from useTransition
   // 💰 use transition.location?.state to get the customer we're transitioning to
+  let loadingCustomer;
+  if (transition.location?.state) {
+    loadingCustomer = transition.location?.state.customer;
+  }
+  //  transition.location?.state = { customer}
 
   // 💯 to avoid a flash of loading state, you can use useSpinDelay
   // from spin-delay to determine whether to show the skeleton
+  const showSkeleton = useSpinDelay(loadingCustomer);
 
   return (
-    <div className="flex overflow-hidden rounded-lg border border-gray-100">
+    <div className="flex overflow-hidden border border-gray-100 rounded-lg">
       <div className="w-1/2 border-r border-gray-100">
         <NavLink
           to="new"
@@ -37,13 +50,14 @@ export default function Customers() {
             <FilePlusIcon /> <span>Create new customer</span>
           </span>
         </NavLink>
-        <div className="max-h-96 overflow-y-scroll">
+        <div className="overflow-y-scroll max-h-96">
           {customers.map((customer) => (
             <NavLink
               key={customer.id}
               to={customer.id}
               // 🐨 add state to set the customer for the transition
               // 💰 state={{ customer }}
+              state={{ customer }}
               prefetch="intent"
               className={({ isActive }) =>
                 "block border-b border-gray-50 py-3 px-4 hover:bg-gray-50" +
@@ -61,12 +75,20 @@ export default function Customers() {
           ))}
         </div>
       </div>
-      <div className="flex w-1/2 flex-col justify-between">
+      <div className="flex flex-col justify-between w-1/2">
         {/*
           🐨 if we're loading a customer, then render the
           <CustomerSkeleton /> (defined below) instead of
           the <Outlet />
         */}
+        {!showSkeleton ? (
+          <Outlet />
+        ) : (
+          <CustomerSkeleton
+            email={loadingCustomer?.email}
+            name={loadingCustomer.name}
+          />
+        )}
         <Outlet />
         <small className="p-2 text-center">
           Note: this is arbitrarily slow to demonstrate pending UI.
@@ -82,7 +104,7 @@ function CustomerSkeleton({ name, email }: { name: string; email: string }) {
       <div className="text-[length:14px] font-bold leading-6">{email}</div>
       <div className="text-[length:32px] font-bold leading-[40px]">{name}</div>
       <div className="h-4" />
-      <div className="text-m-h3 font-bold leading-8">Invoices</div>
+      <div className="font-bold leading-8 text-m-h3">Invoices</div>
       <div className="h-4" />
       <div>
         <div className="flex h-[56px] items-center border-t border-gray-100">
